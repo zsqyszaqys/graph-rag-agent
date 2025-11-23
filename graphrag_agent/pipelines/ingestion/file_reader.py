@@ -11,14 +11,33 @@ from yaml import CLoader as Loader
 class FileReader:
     """
     文件读取器，支持多种文件格式：
-    - TXT (文本文件)
-    - PDF (PDF文档)
-    - MD (Markdown文件)
-    - DOCX (Word文档)
-    - DOC (旧版Word文档)
-    - CSV (CSV文件)
-    - JSON (JSON文件)
-    - YAML/YML (YAML文件)
+        - TXT (文本文件)
+        - PDF (PDF文档)
+        - MD (Markdown文件)
+        - DOCX (Word文档)
+        - DOC (旧版Word文档)
+        - CSV (CSV文件)
+        - JSON (JSON文件)
+        - YAML/YML (YAML文件)
+    处理流程:
+            FileReader 初始化
+            ↓
+        调用 read_files(extensions, recursive)
+            ↓
+            ├─ recursive=True ─→ _read_files_recursive() ─┐
+            │                                              │
+            └─ recursive=False → _process_files_in_dir()─┘
+                                                           ↓
+                                            根据文件扩展名选择读取方法
+                                                           ↓
+                                ┌──────────────────────────┼──────────────────────┐
+                                ↓                          ↓                      ↓
+                           _read_txt()              _read_pdf()            _read_docx()
+                           _read_csv()              _read_json()           _read_yaml()
+                                ↓                          ↓                      ↓
+                                └──────────────────────────┴──────────────────────┘
+                                                           ↓
+                                    返回 List[Tuple[文件名, 文本内容]]
     """
 
     def __init__(self, directory_path:str):
@@ -88,7 +107,7 @@ class FileReader:
                 # 如果是目录，递归处理
                 if os.path.isdir(item_path):
                     print(f"递归进入子目录: {item_path}")
-                    sub_results = self._read_files_recursive(self.directory_path, file_extensions, supported_extensions)
+                    sub_results = self._read_files_recursive(item_path, file_extensions, supported_extensions)
                     results.extend(sub_results)
                 # 如果是文件，处理文件
                 elif os.path.isfile(item_path):
@@ -114,6 +133,36 @@ class FileReader:
 
         return results
 
+    def _process_files_in_dir(self, directory: str, filenames: List[str], file_extensions: List[str],
+                              supported_extensions: Dict) -> List[Tuple[str, str]]:
+        """
+        处理指定目录中的文件（不递归）
+        :param directory:目录路径
+        :param filenames:文件名列表
+        :param file_extensions:要处理的文件扩展名列表
+        :param supported_extensions:支持的文件扩展名及对应处理函数
+        :return:List[Tuple[str, str]]: 文件名和内容的元组列表
+        """
+
+        results = []
+
+        for filename in filenames:
+            file_ext = os.path.splitext(filename)[1].lower()
+
+            if file_ext in file_extensions:
+                file_path = os.path.join(directory, filename)
+                print(f"处理文件: {filename} (类型: {file_ext})")
+
+                # 使用对应的读取方法处理文件
+                if file_ext in supported_extensions:
+                    try:
+                        content = supported_extensions[file_ext](file_path)
+                        results.append((filename, content))
+                        print(f"成功读取文件: {filename}, 内容长度: {len(content)}")
+                    except Exception as e:
+                        print(f"读取文件 {filename} 时出错: {str(e)}")
+
+        return results
 
     def _read_txt(self, file_path:str)->str:
         """读取txt文件"""
