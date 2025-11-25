@@ -4,39 +4,40 @@ from neo4j import GraphDatabase, Result
 from langchain_neo4j import Neo4jGraph
 from graphrag_agent.config.settings import NEO4J_CONFIG
 
-
 class DBConnectionManager:
-    """数据库连接管理器，实现单例模式"""
+    """
+    数据库连接管理器，实现单例模式
+    """
 
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(DBConnectionManager, cls).__new__(cls)
+            cls._instance = super(DBConnectionManager, cls).__new__()
             cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
-        # 避免重复初始化
+        """避免重复初始化"""
         if self._initialized:
             return
 
         # 从统一设置中获取连接信息
-        self.neo4j_uri = NEO4J_CONFIG["uri"]
+        self.neo4j_url = NEO4J_CONFIG["url"]
         self.neo4j_username = NEO4J_CONFIG["username"]
         self.neo4j_password = NEO4J_CONFIG["password"]
         self.max_pool_size = NEO4J_CONFIG["max_pool_size"]
 
         # 初始化Neo4j驱动
         self.driver = GraphDatabase.driver(
-            self.neo4j_uri,
+            self.neo4j_url,
             auth=(self.neo4j_username, self.neo4j_password),
             max_connection_pool_size=self.max_pool_size
         )
 
-        # 初始化LangChain Neo4j图实例
+        # 初始化Langchain Neo4j图示例
         self.graph = Neo4jGraph(
-            url=self.neo4j_uri,
+            url=self.neo4j_url,
             username=self.neo4j_username,
             password=self.neo4j_password,
             refresh_schema=NEO4J_CONFIG["refresh_schema"],

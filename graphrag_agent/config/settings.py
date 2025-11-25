@@ -206,7 +206,7 @@ NEO4J_MAX_POOL_SIZE = _get_env_int("NEO4J_MAX_POOL_SIZE", 10) or 10
 NEO4J_REFRESH_SCHEMA = _get_env_bool("NEO4J_REFRESH_SCHEMA", False)
 
 NEO4J_CONFIG = {
-    "uri": NEO4J_URI,
+    "url": NEO4J_URI,
     "username": NEO4J_USERNAME,
     "password": NEO4J_PASSWORD,
     "max_pool_size": NEO4J_MAX_POOL_SIZE,
