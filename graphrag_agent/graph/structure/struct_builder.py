@@ -11,12 +11,12 @@ class GraphStructureBuilder:
     """
     图结构构建器，负责创建和管理Neo4j中的文档和块节点结构。
     处理文档节点、Chunk节点的创建，以及它们之间关系的建立。
-    图结构示例:
-        (Document)
-            ↓ FIRST_CHUNK
-        (Chunk 1) ──NEXT_CHUNK──> (Chunk 2) ──NEXT_CHUNK──> (Chunk 3) ...
-            │                       │                       │
-            └─PART_OF─> (Document)  └─PART_OF─> (Document)  └─PART_OF─> (Document)
+
+    __Document__：文档节点，代表一个完整的文档
+    [{"d": {"fileName": "...", "type": "...", "url": "...", "domain": "..."}}]
+
+    __Chunk__：文本块节点，文档的片段
+    [{"c":{"id":"...","text":"...","position":0,"length":0,"fileName":"...","content_offset":0,"tokens":0}}]
     """
 
     def __init__(self, batch_size=100):
@@ -39,12 +39,12 @@ class GraphStructureBuilder:
 
     def crate_document(self, type:str, url:str, file_name:str, domain:str)->Dict:
         """
-         创建Document节点
+        创建Document节点
         :param type:文档类型
         :param url:文档URL
         :param file_name:文件名
         :param domain:文档域
-        :return:创建的文档节点信息
+        :return:创建的文档节点信息 Document(page_content=page_content, metadata=metadata)
         """
         query = """
             MERGE(d:`__Document__` {fileName: $file_name}) 
@@ -61,10 +61,10 @@ class GraphStructureBuilder:
 
     def create_relation_between_chunks(self, file_name:str, chunks:List)->List[Dict]:
         """
-         创建Chunk节点并建立关系 - 批处理优化版本
+        创建Chunk节点并建立关系 - 批处理优化版本
         :param file_name:文件名
         :param chunks: 文本块列表
-        :return: List[Dict]: 带有ID和文档的块列表
+        :return: List[Dict]: 带有 ID 和 Document(content, metadata) 的块列表
         """
         t0 = time.time()
 
@@ -166,7 +166,7 @@ class GraphStructureBuilder:
         """
 
         # 合并查询：创建Chunk节点和PART_OF关系
-        query_chunks_and_part_of = """
+        query_chunks_and_part_of = """  
                   UNWIND $batch_data AS data
                   MERGE (c:`__Chunk__` {id: data.id})
                   SET c.text = data.pg_content, 
