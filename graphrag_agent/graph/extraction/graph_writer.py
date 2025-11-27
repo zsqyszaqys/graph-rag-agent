@@ -8,18 +8,21 @@ from langchain_community.graphs.graph_document import GraphDocument, Node, Relat
 from graphrag_agent.graph.core import connection_manager
 from graphrag_agent.config.settings import BATCH_SIZE as DEFAULT_BATCH_SIZE, MAX_WORKERS as DEFAULT_MAX_WORKERS
 
+
 class GraphWriter:
     """
     图写入器，负责将提取的实体和关系写入Neo4j图数据库。
     处理实体和关系的解析、转换为GraphDocument，以及批量写入图数据库。
     """
 
-    def __init__(self, graph:Neo4jGraph = None, batch_size:int = 50, max_workers:int = 4):
+    def __init__(self, graph: Neo4jGraph = None, batch_size: int = 50, max_workers: int = 4):
         """
-        初始化图写入层
-        :param graph: Neo4j图数据库对象，如果为None则使用连接管理器获取
-        :param batch_size:批处理大小
-        :param max_workers:并行工作线程数
+        初始化图写入器
+
+        Args:
+            graph: Neo4j图数据库对象，如果为None则使用连接管理器获取
+            batch_size: 批处理大小
+            max_workers: 并行工作线程数
         """
         self.graph = graph or connection_manager.get_connection()
         self.batch_size = batch_size or DEFAULT_BATCH_SIZE
@@ -31,13 +34,17 @@ class GraphWriter:
         # 用于跟踪已经处理的节点，减少重复操作
         self.processed_nodes: Set[str] = set()
 
-    def convert_to_graph_document(self, chunk_id, input_text:str, result:str)->GraphDocument:
+    def convert_to_graph_document(self, chunk_id: str, input_text: str, result: str) -> GraphDocument:
         """
         将提取的实体关系文本转换为GraphDocument对象
-        :param chunk_id:文本块ID
-        :param input_text:输入文本
-        :param result:提取结果
-        :return: GraphDocument: 转换后的图文档对象
+
+        Args:
+            chunk_id: 文本块ID
+            input_text: 输入文本
+            result: 提取结果
+
+        Returns:
+            GraphDocument: 转换后的图文档对象
         """
         node_pattern = re.compile(r'\("entity" : "(.+?)" : "(.+?)" : "(.+?)"\)')
         relationship_pattern = re.compile(r'\("relationship" : "(.+?)" : "(.+?)" : "(.+?)" : "(.+?)" : (.+?)\)')
@@ -65,7 +72,7 @@ class GraphWriter:
             # 解析关系
             for match in relationship_pattern.findall(result):
                 source_id, target_id, rel_type, description, weight = match
-                # 确保源节点存在,先检查缓存
+                # 确保源节点存在，先检查缓存
                 if source_id not in nodes:
                     if source_id in self.node_cache:
                         nodes[source_id] = self.node_cache[source_id]
@@ -78,7 +85,7 @@ class GraphWriter:
                         nodes[source_id] = new_node
                         self.node_cache[source_id] = new_node
 
-                # 确保目标节点存在,先检查缓存
+                # 确保目标节点存在，先检查缓存
                 if target_id not in nodes:
                     if target_id in self.node_cache:
                         nodes[target_id] = self.node_cache[target_id]
@@ -91,17 +98,17 @@ class GraphWriter:
                         nodes[target_id] = new_node
                         self.node_cache[target_id] = new_node
 
-                    relationships.append(
-                        Relationship(
-                            source=nodes[source_id],
-                            target=nodes[target_id],
-                            type=rel_type,
-                            properties={
-                                "description": description,
-                                "weight": float(weight)
-                            }
-                        )
+                relationships.append(
+                    Relationship(
+                        source=nodes[source_id],
+                        target=nodes[target_id],
+                        type=rel_type,
+                        properties={
+                            "description": description,
+                            "weight": float(weight)
+                        }
                     )
+                )
         except Exception as e:
             print(f"解析文本时出错: {e}")
             # 返回空的GraphDocument而不是引发异常
@@ -124,10 +131,11 @@ class GraphWriter:
             )
         )
 
-    def process_and_write_graph_documents(self, file_contents:List)->None:
+    def process_and_write_graph_documents(self, file_contents: List) -> None:
         """
-         处理并写入所有文件的GraphDocument对象 - 使用并行处理和批处理优化
-        :param file_contents:文件内容列表
+        处理并写入所有文件的GraphDocument对象 - 使用并行处理和批处理优化
+        Args:
+            file_contents: 文件内容列表
         """
         all_graph_documents = []
         all_chunk_ids = []
@@ -174,24 +182,25 @@ class GraphWriter:
                     else:
                         all_graph_documents[idx] = None
                         all_chunk_ids[idx] = None
+
                 except Exception as e:
                     error_count += 1
                     print(f"处理chunk时出错 (已有{error_count}个错误): {e}")
                     all_graph_documents[idx] = None
                     all_chunk_ids[idx] = None
 
-                # 过滤掉None值
-                all_graph_documents = [doc for doc in all_graph_documents if doc is not None]
-                all_chunk_ids = [id for id in all_chunk_ids if id is not None]
+        # 过滤掉None值
+        all_graph_documents = [doc for doc in all_graph_documents if doc is not None]
+        all_chunk_ids = [id for id in all_chunk_ids if id is not None]
 
-                print(f"共处理 {total_chunks} 个chunks, 有效文档 {len(all_graph_documents)}, 错误 {error_count}")
+        print(f"共处理 {total_chunks} 个chunks, 有效文档 {len(all_graph_documents)}, 错误 {error_count}")
 
-                # 批量写入图文档
-                self._batch_write_graph_documents(all_graph_documents)
+        # 批量写入图文档
+        self._batch_write_graph_documents(all_graph_documents)
 
-                # 批量合并chunk关系
-                if all_chunk_ids:
-                    self.merge_chunk_relationships(all_chunk_ids)
+        # 批量合并chunk关系
+        if all_chunk_ids:
+            self.merge_chunk_relationships(all_chunk_ids)
 
     def _batch_write_graph_documents(self, documents: List[GraphDocument]) -> None:
         """
@@ -261,14 +270,14 @@ class GraphWriter:
             try:
                 # 使用原始的查询，确保兼容性
                 merge_query = """
-                       UNWIND $batch_data AS data
-                       MATCH (c:`__Chunk__` {id: data.chunk_id}), (d:Document{chunk_id:data.chunk_id})
-                       WITH c, d
-                       MATCH (d)-[r:MENTIONS]->(e)
-                       MERGE (c)-[newR:MENTIONS]->(e)
-                       ON CREATE SET newR += properties(r)
-                       DETACH DELETE d
-                   """
+                    UNWIND $batch_data AS data
+                    MATCH (c:`__Chunk__` {id: data.chunk_id}), (d:Document{chunk_id:data.chunk_id})
+                    WITH c, d
+                    MATCH (d)-[r:MENTIONS]->(e)
+                    MERGE (c)-[newR:MENTIONS]->(e)
+                    ON CREATE SET newR += properties(r)
+                    DETACH DELETE d
+                """
 
                 self.graph.query(merge_query, params={"batch_data": batch_data})
                 print(f"已处理合并关系批次 {i // optimal_batch_size + 1}/{total_batches}")
@@ -278,13 +287,13 @@ class GraphWriter:
                 for chunk_id in batch_chunk_ids:
                     try:
                         single_query = """
-                               MATCH (c:`__Chunk__` {id: $chunk_id}), (d:Document{chunk_id:$chunk_id})
-                               WITH c, d
-                               MATCH (d)-[r:MENTIONS]->(e)
-                               MERGE (c)-[newR:MENTIONS]->(e)
-                               ON CREATE SET newR += properties(r)
-                               DETACH DELETE d
-                           """
+                            MATCH (c:`__Chunk__` {id: $chunk_id}), (d:Document{chunk_id:$chunk_id})
+                            WITH c, d
+                            MATCH (d)-[r:MENTIONS]->(e)
+                            MERGE (c)-[newR:MENTIONS]->(e)
+                            ON CREATE SET newR += properties(r)
+                            DETACH DELETE d
+                        """
                         self.graph.query(single_query, params={"chunk_id": chunk_id})
                     except Exception as e2:
                         print(f"处理单个chunk关系时出错: {e2}")

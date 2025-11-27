@@ -19,6 +19,25 @@ class EntityRelationExtractor:
     """
     实体关系提取器，负责从文本中提取实体和关系。
     使用LLM分析文本块，生成结构化的实体和关系数据。
+
+    提取完实体关系的结构
+        [
+            # 第一个文件的元组
+            (
+                file_name,       # [0] 文件名 (str)
+                raw_content,     # [1] 文件原始内容 (str)
+                chunks,          # [2] 分块列表 (List[List[str]] 或 List[str])
+                results          # [3] 提取结果列表 (List[str]) <-- 这是提取步骤新增的
+            ),
+            # 第二个文件的元组
+            (
+                ...,
+                ...,
+                ...,
+                ...
+            )
+        ]
+
     """
 
     def __init__(self, llm, system_template, human_template,
@@ -141,17 +160,6 @@ class EntityRelationExtractor:
         Returns:
             List[Tuple]: 处理结果
 
-        1.输入：包含多个文件的列表，每个文件里有一堆切好的 Chunks。
-        2.预检缓存：遍历所有 Chunk，先看哪些有缓存。
-        3.任务分发：
-            找出没有缓存的那些 Chunk。
-            创建一个线程池 (ThreadPoolExecutor)。
-            将这些未缓存的 Chunk 并行提交给 _process_single_chunk。
-        4.结果收集与重试：
-            使用 as_completed 收集结果。
-            如果某个 Chunk 处理报错（比如网络波动），内置了 retry 逻辑（重试 3 次）。
-            整合：将“缓存读取的结果”和“现跑出来的结果”按原始顺序拼回去。
-        5.输出：返回修改后的文件列表（每个文件多了一个结果列表）。
         """
         t0 = time.time()
         chunk_index = 0
@@ -171,8 +179,7 @@ class EntityRelationExtractor:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                     # 创建任务字典
                     future_to_chunk = {
-                        executor.submit(self._process_single_chunk, ''.join(chunks[idx])): idx
-                        for idx in non_cached_indices
+                        executor.submit(self._process_single_chunk, ''.join(chunks[idx])): idx for idx in non_cached_indices
                     }
 
                     # 处理完成的任务
@@ -290,7 +297,6 @@ class EntityRelationExtractor:
                     # 处理结果数量不匹配的情况
                     if len(batch_results) != len(batch_chunks):
                         # 如果无法正确解析批处理响应，则单独处理每个chunk
-                        # print(f"批处理结果数量不匹配 (期望 {len(batch_chunks)}, 实际 {len(batch_results)}), 将单独处理每个chunk")
                         batch_results = []
                         for idx, chunk in enumerate(batch_chunks):
                             # 检查缓存
@@ -385,9 +391,9 @@ class EntityRelationExtractor:
 
         return result
 
-    def stram_process_large_files(self, file_path:str, chunk_size:int = 5000, structure_builder = None, graph_writer = None)->None:
+    def stream_process_large_files(self, file_path:str, chunk_size:int = 5000, structure_builder = None, graph_writer = None)->None:
         """
-         以流式方式处理大文件，避免一次性加载全部内容
+        以流式方式处理大文件，避免一次性加载全部内容
         :param file_path:文件路径
         :param chunk_size:块大小
         :param structure_builder: 结构构建器
@@ -465,3 +471,26 @@ class EntityRelationExtractor:
                     # 如果缓存未命中，提交任务
                     future = executor.submit(self._process_single_chunk, chunk_text)
                     future_to_chunk[future] = chunk_data
+
+            # 处理结果并写入图数据库
+            for future in concurrent.futures.as_completed(future_to_chunk):
+                chunk_data = future_to_chunk[future]
+                try:
+                    result = future.result()
+
+                    # 实时写入一个chunk的结果到图数据库
+                    graph_document = graph_writer.convert_to_graph_document(
+                        chunk_data['chunk_id'],
+                        chunk_data['chunk_doc'].page_content,
+                        result
+                    )
+
+                    if len(graph_document.nodes) > 0 or len(graph_document.relationships) > 0:
+                        graph_writer.graph.add_graph_documents(
+                            [graph_document],
+                            baseEntityLabel=True,
+                            include_source=True
+                        )
+
+                except Exception as exc:
+                    print(f"处理chunk {chunk_data['chunk_id']} 时发生错误: {exc}")
