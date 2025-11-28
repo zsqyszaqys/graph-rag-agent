@@ -96,15 +96,26 @@ def retry(times: int = 3, exceptions: tuple = (Exception,), delay: float = 1.0):
 
     return decorator
 
-def get_performance_stats(stats:Dict[str, str], title:str = "性能统计摘要")->None:
+
+def get_performance_stats(total_time: float,
+                          time_records: Dict[str, float]) -> Dict[str, str]:
     """
-    打印性能统计摘要
-    :param stats:性能统计摘要
-    :param title:标题
+    生成性能统计摘要
+
+    Args:
+        total_time: 总耗时
+        time_records: 各阶段耗时记录
+
+    Returns:
+        Dict[str, str]: 性能统计摘要
     """
-    print(f"\n{title}:")
-    for key, value in stats.items():
-        print(f"  {key}: {value}")
+    stats = {"总耗时": f"{total_time:.2f}秒"}
+
+    for name, t in time_records.items():
+        percentage = (t / total_time * 100) if total_time > 0 else 0
+        stats[name] = f"{t:.2f}秒 ({percentage:.1f}%)"
+
+    return stats
 
 
 def print_performance_stats(stats: Dict[str, str], title: str = "性能统计摘要") -> None:
