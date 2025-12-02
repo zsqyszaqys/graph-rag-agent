@@ -37,7 +37,7 @@ class GraphStructureBuilder:
         """
         self.graph.query(clear_query)
 
-    def crate_document(self, type:str, url:str, file_name:str, domain:str)->Dict:
+    def create_document(self, type:str, url:str, file_name:str, domain:str)->Dict:
         """
         创建Document节点
         :param type:文档类型

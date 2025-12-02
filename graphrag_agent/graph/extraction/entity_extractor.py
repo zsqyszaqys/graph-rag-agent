@@ -149,7 +149,7 @@ class EntityRelationExtractor:
         self.cache_misses += 1
         return None
 
-    def process_chunks(self, file_contents: List[Tuple], progress_callback=None) -> List[Tuple]:
+    def process_chunks(self, file_contents: List[List], progress_callback=None) -> List[Tuple]:
         """
         并行处理所有文件的所有chunks
 
@@ -225,7 +225,7 @@ class EntityRelationExtractor:
         print(f"所有chunks处理完成, 总耗时: {process_time:.2f}秒, 平均每chunk: {process_time / total_chunks:.2f}秒")
         return file_contents
 
-    def process_chunks_batch(self, file_contents:List[Tuple], progress_callback = None)->List[Tuple]:
+    def process_chunks_batch(self, file_contents:List[List], progress_callback = None)->List[Tuple]:
         """
         批量处理chunks，减少LLM调用次数
         :param file_contents:文件内容列表
