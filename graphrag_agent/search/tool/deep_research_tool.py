@@ -1,25 +1,25 @@
-from typing import Dict, List, Any, Optional, AsyncGenerator
-import time
-import re
-import logging
-import json
-import traceback
-from langchain_core.tools import BaseTool
-from langchain_core.messages import SystemMessage, HumanMessage
 import asyncio
+import json
+import logging
+import re
+import time
+import traceback
+from typing import Dict, List, Any, Optional, AsyncGenerator
 
-from graphrag_agent.search.tool.base import BaseSearchTool
-from graphrag_agent.search.tool.hybrid_tool import HybridSearchTool
-from graphrag_agent.search.tool.local_search_tool import LocalSearchTool
-from graphrag_agent.search.tool.global_search_tool import GlobalSearchTool
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.tools import BaseTool
+
 from graphrag_agent.config.prompts import BEGIN_SEARCH_QUERY, BEGIN_SEARCH_RESULT, END_SEARCH_RESULT, MAX_SEARCH_LIMIT, \
     END_SEARCH_QUERY, RELEVANT_EXTRACTION_PROMPT, SUB_QUERY_PROMPT, FOLLOWUP_QUERY_PROMPT, FINAL_ANSWER_PROMPT
-from graphrag_agent.search.tool.reasoning.nlp import extract_between
+from graphrag_agent.config.settings import KB_NAME
+from graphrag_agent.search.tool.base import BaseSearchTool
+from graphrag_agent.search.tool.global_search_tool import GlobalSearchTool
+from graphrag_agent.search.tool.hybrid_tool import HybridSearchTool
+from graphrag_agent.search.tool.local_search_tool import LocalSearchTool
 from graphrag_agent.search.tool.reasoning.prompts import kb_prompt
+from graphrag_agent.search.tool.reasoning.search import DualPathSearcher, QueryGenerator
 from graphrag_agent.search.tool.reasoning.thinking import ThinkingEngine
 from graphrag_agent.search.tool.reasoning.validator import AnswerValidator
-from graphrag_agent.search.tool.reasoning.search import DualPathSearcher, QueryGenerator
-from graphrag_agent.config.settings import KB_NAME
 
 
 class DeepResearchTool(BaseSearchTool):
