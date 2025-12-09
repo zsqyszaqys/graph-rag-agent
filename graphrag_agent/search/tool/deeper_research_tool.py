@@ -2145,6 +2145,9 @@ class DeeperResearchTool:
             # 返回原始答案
             yield {"answer": final_answer, "thinking": think}
 
+    def _detect_and_resolve_contradictions(self, query_id):
+        return detect_and_resolve_contradictions(query_id)
+
     def close(self):
         """关闭资源"""
         # 关闭deep_research的资源
