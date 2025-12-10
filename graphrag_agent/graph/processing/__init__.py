@@ -3,7 +3,7 @@ from .entity_merger import EntityMerger
 from .similar_entity import SimilarEntityDetector, GDSConfig
 from .entity_disambiguation import EntityDisambiguator
 from .entity_alignment import EntityAligner
-from .entity_quality import EntityQuantityProcessor
+from .entity_quality import EntityQualityProcessor
 
 __all__ = [
     'EntityMerger',
@@ -11,5 +11,5 @@ __all__ = [
     'GDSConfig',
     'EntityDisambiguator',
     'EntityAligner',
-    'EntityQuantityProcessor'
+    'EntityQualityProcessor'
 ]
