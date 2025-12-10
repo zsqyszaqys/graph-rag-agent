@@ -93,6 +93,7 @@ class ReflectionExecutor(BaseExecutor):
                 )
                 validation_result = validation_payload.get("validation", {})
                 validation_passed = bool(validation_result.get("passed", False))
+
                 for key, passed in validation_result.items():
                     if key == "passed":
                         continue
@@ -510,6 +511,7 @@ class ReflectionExecutor(BaseExecutor):
     ) -> None:
         if not entries:
             return
+
         for entry in entries:
             text = self._extract_evidence_text(entry)
             if not text:

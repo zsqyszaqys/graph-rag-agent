@@ -226,9 +226,11 @@ class RetrievalExecutor(BaseExecutor):
             if task.task_id not in exec_context.completed_task_ids:
                 exec_context.completed_task_ids.append(task.task_id)
             exec_context.retrieval_cache[task.task_id] = [res.to_dict() for res in record.evidence]
+
             tool_result_payload: Dict[str, Any] = {}
             if record.tool_calls and isinstance(record.tool_calls[0].result, dict):
                 tool_result_payload = record.tool_calls[0].result  # type: ignore[assignment]
+
             answer_text = self._extract_answer_text(tool_result_payload, record)
             exec_context.intermediate_results[task.task_id] = {
                 "answer": answer_text,

@@ -542,6 +542,7 @@ class WorkerCoordinator:
 
             if state.plan is not None:
                 state.plan.update_task_status(task.task_id, "running")
+
             updated_result = executor.execute_task(task, state, signal)
             results.append(updated_result.record)
             final_result = updated_result
